@@ -1,0 +1,41 @@
+# Dependency Directories
+node_modules/
+
+# Maven Target (Java backend build artifact)
+backend/target/
+target/
+
+# Local uploaded files
+uploads/
+backend/uploads/
+frontend/uploads/
+
+# Build outputs
+dist/
+dist-ssr/
+frontend/dist/
+
+# Log Files
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment and Secrets
+.env
+.env.local
+.env.*.local
+*.env
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
