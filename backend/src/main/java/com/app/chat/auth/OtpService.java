@@ -4,10 +4,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
 
+import jakarta.mail.internet.MimeMessage;
 import java.security.SecureRandom;
 import java.util.concurrent.TimeUnit;
 
@@ -23,6 +26,9 @@ public class OtpService {
 
     @Autowired(required = false)
     private JavaMailSender mailSender;
+
+    @Autowired
+    private TemplateEngine templateEngine;
 
     private final SecureRandom random = new SecureRandom();
 
@@ -72,15 +78,6 @@ public class OtpService {
 
     private void sendOtpEmail(String email, String otp) {
         String subject = "AetherChat - Confirm Registration";
-        String body = String.format(
-                "Hello,\n\n" +
-                "Thank you for registering at AetherChat!\n" +
-                "Your verification code is: %s\n\n" +
-                "This OTP is valid for %d minutes. Please enter it on the registration page to complete your account registration.\n\n" +
-                "If you did not request this, please ignore this email.\n\n" +
-                "Best regards,\nThe AetherChat Team",
-                otp, OTP_EXPIRY_MINUTES
-        );
 
         if (mailSender == null) {
             logger.warn("[SMTP Offline] JavaMailSender is not initialized or configured. Displaying OTP in console fallback:");
@@ -91,14 +88,22 @@ public class OtpService {
         }
 
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(email);
-            message.setSubject(subject);
-            message.setText(body);
-            mailSender.send(message);
-            logger.info("[Email Sent] Verification email successfully sent to {}.", email);
+            // Render HTML email using Thymeleaf context
+            Context context = new Context();
+            context.setVariable("otp", otp);
+            context.setVariable("expiryMinutes", OTP_EXPIRY_MINUTES);
+            String htmlContent = templateEngine.process("otp-email", context);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            helper.setTo(email);
+            helper.setSubject(subject);
+            helper.setText(htmlContent, true);
+
+            mailSender.send(mimeMessage);
+            logger.info("[Email Sent] Beautiful HTML verification email successfully sent to {}.", email);
         } catch (Exception e) {
-            logger.error("[Email Failed] Failed to send email to {}. Exception: {}", email, e.getMessage());
+            logger.error("[Email Failed] Failed to send HTML email to {}. Exception: {}", email, e.getMessage());
             logger.info("================[ FALLBACK ]================");
             logger.info("  REGISTRATION OTP FOR {}: {}", email, otp);
             logger.info("============================================");

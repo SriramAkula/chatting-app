@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { 
@@ -19,6 +19,22 @@ interface Room {
 export const Dashboard: React.FC = () => {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Redirect alert state (e.g. kicked or room deleted)
+  const [redirectAlert, setRedirectAlert] = useState<{ title: string; message: string; type: string } | null>(null);
+
+  useEffect(() => {
+    if (location.state && location.state.infoMessage) {
+      setRedirectAlert({
+        title: location.state.type === 'error' ? 'Notice' : 'Notification',
+        message: location.state.infoMessage,
+        type: location.state.type || 'info'
+      });
+      // Clear state so it doesn't pop up again on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(true);
@@ -603,6 +619,25 @@ export const Dashboard: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Alert Modal for Redirect Messages */}
+      {redirectAlert && (
+        <div className="dialog-overlay" onClick={() => setRedirectAlert(null)}>
+          <div className="dialog-panel" onClick={(e) => e.stopPropagation()}>
+            <h3 className="dialog-title">{redirectAlert.title}</h3>
+            <p className="dialog-message">{redirectAlert.message}</p>
+            <div className="dialog-buttons">
+              <button 
+                type="button" 
+                className="btn-primary" 
+                onClick={() => setRedirectAlert(null)}
+              >
+                Ok
+              </button>
+            </div>
           </div>
         </div>
       )}

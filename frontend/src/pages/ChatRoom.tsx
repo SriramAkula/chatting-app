@@ -80,6 +80,46 @@ export const ChatRoom: React.FC = () => {
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+  // Custom Toast State
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Custom Confirm/Alert Dialog State
+  const [dialog, setDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    isConfirm: boolean;
+    isDestructive?: boolean;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm?: () => void;
+    onClose?: () => void;
+  } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToast({ message, type });
+  };
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void, isDestructive = false) => {
+    setDialog({
+      isOpen: true,
+      title,
+      message,
+      isConfirm: true,
+      isDestructive,
+      confirmText: 'Confirm',
+      cancelText: 'Cancel',
+      onConfirm
+    });
+  };
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   const isTypingRef = useRef(false);
   const stopTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -201,15 +241,21 @@ export const ChatRoom: React.FC = () => {
           if (payload.messageType === 'KICK') {
             setMembers((prev) => prev.filter((m) => m.email !== payload.senderEmail));
             if (payload.senderEmail === user?.email) {
-              alert('You have been kicked from this room by the owner.');
-              navigate('/dashboard');
+              sendStopTyping();
+              if (stompClientRef.current) {
+                stompClientRef.current.deactivate();
+              }
+              navigate('/dashboard', { state: { infoMessage: 'You have been kicked from this room by the owner.', type: 'error' } });
               return;
             }
           }
 
           if (payload.messageType === 'DELETE') {
-            alert('This chat room has been deleted by the owner.');
-            navigate('/dashboard');
+            sendStopTyping();
+            if (stompClientRef.current) {
+              stompClientRef.current.deactivate();
+            }
+            navigate('/dashboard', { state: { infoMessage: 'This chat room has been deleted by the owner.', type: 'error' } });
             return;
           }
 
@@ -338,7 +384,7 @@ export const ChatRoom: React.FC = () => {
       });
     } catch (err) {
       console.error('Media upload failed', err);
-      alert('Failed to upload file. Please try again.');
+      showToast('Failed to upload file. Please try again.', 'error');
     } finally {
       setUploading(false);
     }
@@ -351,51 +397,67 @@ export const ChatRoom: React.FC = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDeleteRoom = async () => {
+  const handleDeleteRoom = () => {
     if (!roomId) return;
-    if (!window.confirm("Are you sure you want to delete this room? This will wipe all message history for all members.")) return;
-    
-    setActionLoading(true);
-    try {
-      await api.delete(`/api/rooms/${roomId}`);
-      navigate('/dashboard');
-    } catch (err) {
-      console.error("Failed to delete room", err);
-      alert("Failed to delete room. Please try again.");
-    } finally {
-      setActionLoading(false);
-    }
+    showConfirm(
+      "Delete Chat Room",
+      "Are you sure you want to delete this room? This will permanently wipe all message history for all members.",
+      async () => {
+        setActionLoading(true);
+        try {
+          await api.delete(`/api/rooms/${roomId}`);
+          navigate('/dashboard');
+        } catch (err) {
+          console.error("Failed to delete room", err);
+          showToast("Failed to delete room. Please try again.", "error");
+        } finally {
+          setActionLoading(false);
+        }
+      },
+      true // isDestructive
+    );
   };
 
-  const handleLeaveRoom = async () => {
+  const handleLeaveRoom = () => {
     if (!roomId) return;
-    if (!window.confirm("Are you sure you want to leave this room?")) return;
-    
-    setActionLoading(true);
-    try {
-      await api.post(`/api/rooms/leave/${roomId}`);
-      navigate('/dashboard');
-    } catch (err) {
-      console.error("Failed to leave room", err);
-      alert("Failed to leave room. Please try again.");
-    } finally {
-      setActionLoading(false);
-    }
+    showConfirm(
+      "Leave Chat Room",
+      "Are you sure you want to leave this room?",
+      async () => {
+        setActionLoading(true);
+        try {
+          await api.post(`/api/rooms/leave/${roomId}`);
+          navigate('/dashboard');
+        } catch (err) {
+          console.error("Failed to leave room", err);
+          showToast("Failed to leave room. Please try again.", "error");
+        } finally {
+          setActionLoading(false);
+        }
+      },
+      true // isDestructive
+    );
   };
 
-  const handleKickMember = async (memberEmail: string, memberName: string) => {
+  const handleKickMember = (memberEmail: string, memberName: string) => {
     if (!roomId) return;
-    if (!window.confirm(`Are you sure you want to kick ${memberName} from this room?`)) return;
-
-    setActionLoading(true);
-    try {
-      await api.post(`/api/rooms/kick/${roomId}?email=${encodeURIComponent(memberEmail)}`);
-    } catch (err) {
-      console.error("Failed to kick member", err);
-      alert("Failed to kick member. Please try again.");
-    } finally {
-      setActionLoading(false);
-    }
+    showConfirm(
+      "Kick Member",
+      `Are you sure you want to kick ${memberName} from this room?`,
+      async () => {
+        setActionLoading(true);
+        try {
+          await api.post(`/api/rooms/kick/${roomId}?email=${encodeURIComponent(memberEmail)}`);
+          showToast(`Kicked ${memberName} successfully.`, "success");
+        } catch (err) {
+          console.error("Failed to kick member", err);
+          showToast("Failed to kick member. Please try again.", "error");
+        } finally {
+          setActionLoading(false);
+        }
+      },
+      true // isDestructive
+    );
   };
 
   if (loading) {
@@ -931,6 +993,63 @@ export const ChatRoom: React.FC = () => {
             className="lightbox-content" 
             onClick={(e) => e.stopPropagation()} 
           />
+        </div>
+      )}
+
+      {/* Toast Notifications */}
+      {toast && (
+        <div className="toast-container">
+          <div className={`toast-item ${toast.type}`}>
+            <span>{toast.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Alert/Confirm Dialog */}
+      {dialog?.isOpen && (
+        <div className="dialog-overlay" onClick={() => !dialog.isConfirm && setDialog(null)}>
+          <div 
+            className={`dialog-panel ${dialog.isDestructive ? 'destructive-panel' : ''} ${dialog.isDestructive ? 'dialog-destructive' : ''}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="dialog-title">{dialog.title}</h3>
+            <p className="dialog-message">{dialog.message}</p>
+            
+            <div className="dialog-buttons">
+              {dialog.isConfirm ? (
+                <>
+                  <button 
+                    type="button" 
+                    className="btn-secondary" 
+                    onClick={() => setDialog(null)}
+                  >
+                    {dialog.cancelText || 'Cancel'}
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn-primary" 
+                    onClick={() => {
+                      dialog.onConfirm?.();
+                      setDialog(null);
+                    }}
+                  >
+                    {dialog.confirmText || 'Confirm'}
+                  </button>
+                </>
+              ) : (
+                <button 
+                  type="button" 
+                  className="btn-primary" 
+                  onClick={() => {
+                    dialog.onClose?.();
+                    setDialog(null);
+                  }}
+                >
+                  Ok
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
