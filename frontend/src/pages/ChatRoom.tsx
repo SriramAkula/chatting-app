@@ -78,6 +78,7 @@ export const ChatRoom: React.FC = () => {
 
   const [onlineEmails, setOnlineEmails] = useState<string[]>([]);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const isTypingRef = useRef(false);
   const stopTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -406,22 +407,16 @@ export const ChatRoom: React.FC = () => {
   }
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: '300px 1fr',
-      height: '100vh',
-      background: 'var(--bg-main)'
-    }}>
+    <div className="chatroom-layout">
+      {/* Mobile sidebar overlay backdrop */}
+      {mobileSidebarOpen && (
+        <div 
+          className="sidebar-backdrop"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
       {/* Sidebar - Members & Room policy info */}
-      <aside className="glass-panel" style={{
-        margin: '16px',
-        marginRight: '8px',
-        borderRadius: 'var(--radius-md)',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '20px',
-        overflowY: 'hidden'
-      }}>
+      <aside className={`glass-panel chatroom-sidebar ${mobileSidebarOpen ? 'open' : ''}`}>
         {/* Back and Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
           <button 
@@ -619,14 +614,7 @@ export const ChatRoom: React.FC = () => {
       </aside>
 
       {/* Main chat window */}
-      <main style={{
-        margin: '16px',
-        marginLeft: '8px',
-        display: 'flex',
-        flexDirection: 'column',
-        height: 'calc(100vh - 32px)',
-        overflowY: 'hidden'
-      }} className="glass-panel">
+      <main className="glass-panel chatroom-main">
         
         {/* Top Connection Banner */}
         <div style={{
@@ -637,6 +625,13 @@ export const ChatRoom: React.FC = () => {
           alignItems: 'center'
         }}>
           <div>
+            <button 
+              onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+              className="btn-secondary mobile-only-toggle"
+              style={{ padding: '8px', borderRadius: '8px' }}
+            >
+              <Users size={18} />
+            </button>
             <h2 style={{ fontSize: '16px', fontWeight: '600' }}>Live Chat Session</h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -720,12 +715,9 @@ export const ChatRoom: React.FC = () => {
               return (
                 <div 
                   key={index} 
-                  className={msg.isPruning ? 'animate-disappear' : ''}
+                  className={`message-bubble-wrapper ${msg.isPruning ? 'animate-disappear' : ''}`}
                   style={{
-                    display: 'flex',
-                    flexDirection: 'column',
                     alignItems: isMine ? 'flex-end' : 'flex-start',
-                    maxWidth: '70%',
                     alignSelf: isMine ? 'flex-end' : 'flex-start',
                     animation: msg.isPruning ? 'none' : 'messagePop 0.25s ease-out',
                     marginBottom: isSameSenderAndMinuteAsNext ? '4px' : '16px'

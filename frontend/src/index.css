@@ -283,3 +283,149 @@ body {
   animation: typingBlink 1s infinite ease-in-out;
 }
 
+/* Responsive / Mobile Styling Rules */
+
+/* Login/Register responsive card */
+.login-card {
+  padding: 40px;
+  max-width: 450px;
+  width: 100%;
+  border-radius: var(--radius-lg);
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 24px 20px;
+  }
+}
+
+/* Dashboard responsive layout */
+.dashboard-header {
+  margin: 16px;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: var(--radius-md);
+}
+
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+    text-align: center;
+  }
+  .dashboard-header > div {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+/* ChatRoom responsive layout */
+.chatroom-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  height: 100vh;
+  background: var(--bg-main);
+  position: relative;
+  overflow: hidden;
+}
+
+.chatroom-sidebar {
+  margin: 16px;
+  margin-right: 8px;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  overflow-y: hidden;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10;
+}
+
+.chatroom-main {
+  margin: 16px;
+  margin-left: 8px;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 32px);
+  overflow-y: hidden;
+}
+
+.message-bubble-wrapper {
+  display: flex;
+  flex-direction: column;
+  max-width: 70%;
+}
+
+.mobile-only-toggle {
+  display: none !important;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .chatroom-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .chatroom-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 290px;
+    margin: 0;
+    border-radius: 0;
+    border-right: 1px solid var(--border-glass);
+    transform: translateX(-100%);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+  }
+  
+  .chatroom-sidebar.open {
+    transform: translateX(0);
+  }
+  
+  .chatroom-main {
+    margin: 0;
+    height: 100vh;
+    border-radius: 0;
+    border: none;
+  }
+  
+  .message-bubble-wrapper {
+    max-width: 85%;
+  }
+  
+  .mobile-only-toggle {
+    display: inline-flex !important;
+  }
+  
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 9;
+    animation: fadeIn 0.2s ease-out;
+  }
+}
+
+

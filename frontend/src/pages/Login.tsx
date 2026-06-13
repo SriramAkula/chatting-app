@@ -66,12 +66,7 @@ export const Login: React.FC = () => {
       minHeight: '100vh',
       padding: '20px'
     }}>
-      <div className="glass-panel animate-fade-in" style={{
-        padding: '40px',
-        maxWidth: '450px',
-        width: '100%',
-        borderRadius: 'var(--radius-lg)'
-      }}>
+      <div className="glass-panel animate-fade-in login-card">
         {/* Brand Header */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '32px' }}>
           <div style={{

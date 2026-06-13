@@ -176,20 +176,13 @@ export const Dashboard: React.FC = () => {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header bar */}
-      <header className="glass-panel" style={{
-        margin: '16px',
-        padding: '16px 24px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderRadius: 'var(--radius-md)'
-      }}>
+      <header className="glass-panel dashboard-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <MessageCircle size={24} color="var(--color-secondary)" />
           <h1 style={{ fontSize: '20px', fontWeight: '700' }}>AetherChat</h1>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {user?.avatarUrl ? (
               <img 
@@ -225,16 +218,7 @@ export const Dashboard: React.FC = () => {
       </header>
 
       {/* Main layout */}
-      <main style={{
-        flex: 1,
-        maxWidth: '1200px',
-        width: '100%',
-        margin: '0 auto',
-        padding: '0 16px 40px 16px',
-        display: 'grid',
-        gridTemplateColumns: '1fr 2fr',
-        gap: '24px'
-      }} className="animate-fade-in">
+      <main style={{ padding: '0 16px 40px 16px' }} className="dashboard-layout animate-fade-in">
         
         {/* Left Side: Actions */}
         <section style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
