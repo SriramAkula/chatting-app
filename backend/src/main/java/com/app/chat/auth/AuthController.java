@@ -32,8 +32,11 @@ public class AuthController {
     @Autowired
     private JwtTokenProvider tokenProvider;
 
-    @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest registerRequest) {
+    @Autowired
+    private OtpService otpService;
+
+    @PostMapping("/register/request-otp")
+    public ResponseEntity<?> requestOtp(@Valid @RequestBody RegisterRequest registerRequest) {
         if (userRepository.existsByEmail(registerRequest.getEmail())) {
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
@@ -46,26 +49,87 @@ public class AuthController {
                     .body("Display name already in use.");
         }
 
-        // Create new user's account
+        try {
+            otpService.generateAndSaveOtp(registerRequest.getEmail());
+            return ResponseEntity.ok("Verification code sent to your email. It is valid for 5 minutes.");
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to send verification code. Please try again later.");
+        }
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> registerUser(@Valid @RequestBody VerifyOtpRequest verifyRequest) {
+        if (userRepository.existsByEmail(verifyRequest.getEmail())) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body("Email address already in use.");
+        }
+
+        if (userRepository.existsByDisplayName(verifyRequest.getDisplayName())) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body("Display name already in use.");
+        }
+
+        // Verify OTP code
+        boolean isOtpValid = otpService.verifyOtp(verifyRequest.getEmail(), verifyRequest.getOtp());
+        if (!isOtpValid) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body("Invalid or expired OTP code.");
+        }
+
+        // OTP is correct, save new user's account
         User user = new User(
-                registerRequest.getEmail(),
-                passwordEncoder.encode(registerRequest.getPassword()),
-                registerRequest.getDisplayName(),
-                null, // Avatar can be uploaded later or left null
+                verifyRequest.getEmail(),
+                passwordEncoder.encode(verifyRequest.getPassword()),
+                verifyRequest.getDisplayName(),
+                null, 
                 AuthProvider.LOCAL
         );
 
         userRepository.save(user);
+
+        // Delete used OTP
+        otpService.deleteOtp(verifyRequest.getEmail());
 
         return ResponseEntity.ok("User registered successfully");
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+        String email = loginRequest.getEmail();
+        String password = loginRequest.getPassword();
+
+        // 1. Manually check if user exists
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body("Please register to Login.");
+        }
+
+        // 2. Check if registered via OAuth2
+        if (user.getAuthProvider() != AuthProvider.LOCAL) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body("Please login using your OAuth2 provider (Google).");
+        }
+
+        // 3. Check if password matches
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body("Incorrect password. Please try again.");
+        }
+
+        // Run Spring Security authentication manager
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        loginRequest.getEmail(),
-                        loginRequest.getPassword()
+                        email,
+                        password
                 )
         );
 
