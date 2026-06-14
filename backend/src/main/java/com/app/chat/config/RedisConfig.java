@@ -39,7 +39,15 @@ public class RedisConfig {
             }
             
             config.setDatabase(redisUri.getDatabase());
-            return new LettuceConnectionFactory(config);
+            
+            org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration.LettuceClientConfigurationBuilder clientConfigBuilder = 
+                    org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration.builder();
+            if (redisUrl.startsWith("rediss://")) {
+                clientConfigBuilder.useSsl().disablePeerVerification();
+            }
+            org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration clientConfig = clientConfigBuilder.build();
+            
+            return new LettuceConnectionFactory(config, clientConfig);
         }
 
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
