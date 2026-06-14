@@ -17,6 +17,13 @@ import java.time.LocalDateTime;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class OtpService {
@@ -33,6 +40,9 @@ public class OtpService {
 
     @Autowired
     private TemplateEngine templateEngine;
+
+    @org.springframework.beans.factory.annotation.Value("${app.resend.api-key:}")
+    private String resendApiKey;
 
     private final SecureRandom random = new SecureRandom();
 
@@ -155,6 +165,50 @@ public class OtpService {
     private void sendOtpEmail(String email, String otp) {
         String subject = "AetherChat - Confirm Registration";
 
+        // Render HTML email using Thymeleaf context
+        String htmlContent;
+        try {
+            Context context = new Context();
+            context.setVariable("otp", otp);
+            context.setVariable("expiryMinutes", OTP_EXPIRY_MINUTES);
+            htmlContent = templateEngine.process("otp-email", context);
+        } catch (Exception e) {
+            logger.error("[Template Failed] Failed to process Thymeleaf template. Error: {}", e.getMessage());
+            htmlContent = "<h2>AetherChat Registration OTP</h2><p>Your verification code is: <strong>" + otp + "</strong></p>";
+        }
+
+        // 1. If Resend API Key is configured, use API-based HTTPS sending (Port 443)
+        if (StringUtils.hasText(resendApiKey)) {
+            try {
+                RestTemplate restTemplate = new RestTemplate();
+                
+                // Configure headers
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.set("Authorization", "Bearer " + resendApiKey.trim());
+
+                // Configure request payload map
+                Map<String, Object> body = new HashMap<>();
+                body.put("from", "AetherChat <onboarding@resend.dev>");
+                body.put("to", Collections.singletonList(email));
+                body.put("subject", subject);
+                body.put("html", htmlContent);
+
+                HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+                restTemplate.postForEntity("https://api.resend.com/emails", requestEntity, String.class);
+
+                logger.info("[Email Sent] Beautiful HTML verification email successfully sent to {} via Resend API.", email);
+                return;
+            } catch (Exception e) {
+                logger.error("[Resend API Failed] Failed to send email via Resend for {}. Exception: {}", email, e.getMessage());
+                logger.info("================[ FALLBACK ]================");
+                logger.info("  REGISTRATION OTP FOR {}: {}", email, otp);
+                logger.info("============================================");
+                return;
+            }
+        }
+
+        // 2. Otherwise, fallback to SMTP Mail Sender
         if (mailSender == null) {
             logger.warn("[SMTP Offline] JavaMailSender is not initialized or configured. Displaying OTP in console fallback:");
             logger.info("========================================");
@@ -164,12 +218,6 @@ public class OtpService {
         }
 
         try {
-            // Render HTML email using Thymeleaf context
-            Context context = new Context();
-            context.setVariable("otp", otp);
-            context.setVariable("expiryMinutes", OTP_EXPIRY_MINUTES);
-            String htmlContent = templateEngine.process("otp-email", context);
-
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
             helper.setTo(email);
@@ -177,9 +225,9 @@ public class OtpService {
             helper.setText(htmlContent, true);
 
             mailSender.send(mimeMessage);
-            logger.info("[Email Sent] Beautiful HTML verification email successfully sent to {}.", email);
+            logger.info("[Email Sent] Beautiful HTML verification email successfully sent to {} via SMTP.", email);
         } catch (Exception e) {
-            logger.error("[Email Failed] Failed to send HTML email to {}. Exception: {}", email, e.getMessage());
+            logger.error("[SMTP Failed] Failed to send HTML email to {} via SMTP. Exception: {}", email, e.getMessage());
             logger.info("================[ FALLBACK ]================");
             logger.info("  REGISTRATION OTP FOR {}: {}", email, otp);
             logger.info("============================================");
