@@ -37,9 +37,14 @@ public class OtpService {
         String otp = String.format("%06d", random.nextInt(1000000));
         String key = OTP_PREFIX + email;
 
-        // Cache in Redis for 5 minutes
-        redisTemplate.opsForValue().set(key, otp, OTP_EXPIRY_MINUTES, TimeUnit.MINUTES);
-        logger.info("[OTP Generated] Saved OTP for {} in Redis. Expiry: {} minutes.", email, OTP_EXPIRY_MINUTES);
+        try {
+            // Cache in Redis for 5 minutes
+            redisTemplate.opsForValue().set(key, otp, OTP_EXPIRY_MINUTES, TimeUnit.MINUTES);
+            logger.info("[OTP Generated] Saved OTP for {} in Redis. Expiry: {} minutes.", email, OTP_EXPIRY_MINUTES);
+        } catch (Exception e) {
+            logger.error("[Redis Failed] Failed to save OTP for {} in Redis. Exception: {}", email, e.getMessage(), e);
+            throw e;
+        }
 
         // Attempt to send email
         sendOtpEmail(email, otp);

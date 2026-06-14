@@ -15,10 +15,14 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -53,9 +57,10 @@ public class AuthController {
             otpService.generateAndSaveOtp(registerRequest.getEmail());
             return ResponseEntity.ok("Verification code sent to your email. It is valid for 5 minutes.");
         } catch (Exception e) {
+            logger.error("Failed to generate/send OTP to {}", registerRequest.getEmail(), e);
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to send verification code. Please try again later.");
+                    .body("Failed to send verification code. Details: " + e.getClass().getSimpleName() + " - " + e.getMessage());
         }
     }
 
